@@ -1638,6 +1638,12 @@ TLI_DEFINE_VECFUNC("tgammaf", "armpl_vtgammaq_f32", FIXED(4), NOMASK, "_ZGV_LLVM
 TLI_DEFINE_VECFUNC("tgamma", "armpl_svtgamma_f64_x",  SCALABLE(2), MASKED, "_ZGVsMxv", NOCC)
 TLI_DEFINE_VECFUNC("tgammaf", "armpl_svtgamma_f32_x", SCALABLE(4), MASKED, "_ZGVsMxv", NOCC)
 
+#elif defined(TLI_DEFINE_AMDGCNLIB_VECFUNCS)
+TLI_DEFINE_VECFUNC("llvm.amdgcn.exp2.f32", "amdgcn_vrs2_exp2_f32", FIXED(2), NOMASK, "_ZGV_LLVM_N2v")
+TLI_DEFINE_VECFUNC("llvm.amdgcn.exp2.f16", "amdgcn_vrs2_exp2_f16", FIXED(2), NOMASK, "_ZGV_LLVM_N2v")
+TLI_DEFINE_VECFUNC("llvm.amdgcn.log.f32", "amdgcn_vrs2_log_f32", FIXED(2), NOMASK, "_ZGV_LLVM_N2v")
+TLI_DEFINE_VECFUNC("llvm.amdgcn.log.f16", "amdgcn_vrs2_log_f16", FIXED(2), NOMASK, "_ZGV_LLVM_N2v")
+
 #elif defined(TLI_DEFINE_AMDLIBM_VECFUNCS)
 TLI_DEFINE_VECFUNC("sinf", "amd_vrs16_sinf", FIXED(16), NOMASK, "_ZGV_LLVM_N16v")
 TLI_DEFINE_VECFUNC("sinf", "amd_vrs8_sinf", FIXED(8), NOMASK, "_ZGV_LLVM_N8v")

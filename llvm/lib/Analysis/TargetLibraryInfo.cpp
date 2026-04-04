@@ -148,6 +148,7 @@ static void initializeLibCalls(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.disableAllFunctions();
     TLI.setAvailable(llvm::LibFunc___kmpc_alloc_shared);
     TLI.setAvailable(llvm::LibFunc___kmpc_free_shared);
+    TLI.addVectorizableFunctionsFromVecLib(VecLib, T);
     return;
   }
 
@@ -1336,6 +1337,14 @@ const VecDesc VecFuncs_AMDLIBM[] = {
 #undef TLI_DEFINE_AMDLIBM_VECFUNCS
 };
 
+const VecDesc VecFuncs_AMDGCNLIB[] = {
+#define TLI_DEFINE_AMDGCNLIB_VECFUNCS
+#define TLI_DEFINE_VECFUNC(SCAL, VEC, VF, MASK, VABI_PREFIX)                   \
+  {SCAL, VEC, VF, MASK, VABI_PREFIX, /* CC = */ std::nullopt},
+#include "llvm/Analysis/VecFuncs.def"
+#undef TLI_DEFINE_AMDGCNLIB_VECFUNCS
+};
+
 void TargetLibraryInfoImpl::addVectorizableFunctionsFromVecLib(
     enum VectorLibrary VecLib, const llvm::Triple &TargetTriple) {
   switch (VecLib) {
@@ -1399,6 +1408,10 @@ void TargetLibraryInfoImpl::addVectorizableFunctionsFromVecLib(
   }
   case VectorLibrary::AMDLIBM: {
     addVectorizableFunctions(VecFuncs_AMDLIBM);
+    break;
+  }
+  case VectorLibrary::AMDGCNLIB: {
+    addVectorizableFunctions(VecFuncs_AMDGCNLIB);
     break;
   }
   case VectorLibrary::NoLibrary:

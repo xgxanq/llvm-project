@@ -20,9 +20,9 @@
 #include "llvm/IR/AttributeMask.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/VFABIDemangler.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
-
 using namespace llvm;
 
 #define DEBUG_TYPE "inject-tli-mappings"
@@ -34,6 +34,10 @@ STATISTIC(NumVFDeclAdded,
           "Number of function declarations that have been added.");
 STATISTIC(NumCompUsedAdded,
           "Number of `@llvm.compiler.used` operands that have been added.");
+
+static bool isAMDGCNVectorVariant(StringRef Name) {
+  return Name.starts_with("amdgcn_vrs");
+}
 
 /// A helper function that adds the vector variant declaration for vectorizing
 /// the CallInst \p CI with a vectorization factor of \p VF lanes. For each
@@ -53,34 +57,62 @@ static void addVariantDeclaration(CallInst &CI, const ElementCount &VF,
   assert(Info->Shape.VF == VF && "Mangled name does not match VF");
 
   const StringRef VFName = VD->getVectorFnName();
+  const bool IsAMDGCN = isAMDGCNVectorVariant(VFName);
   FunctionType *VectorFTy = VFABI::createFunctionType(*Info, ScalarFTy);
   Function *VecFunc =
-      Function::Create(VectorFTy, Function::ExternalLinkage, VFName, M);
+      IsAMDGCN
+          ? Function::Create(VectorFTy, Function::ExternalLinkage, VFName, M)
+          : Function::Create(VectorFTy, Function::InternalLinkage, VFName, M);
   VecFunc->copyAttributesFrom(CI.getCalledFunction());
-
-  // When mapping scalar functions to vector functions, some attributes
-  // (e.g. signext) are not valid on vector types. Remove attributes that are
-  // incompatible with the vectorized return type and arguments.
-  VecFunc->removeRetAttrs(AttributeFuncs::typeIncompatible(
-      VecFunc->getReturnType(), VecFunc->getAttributes().getRetAttrs()));
-  for (auto &Arg : VecFunc->args())
-    Arg.removeAttrs(
-        AttributeFuncs::typeIncompatible(Arg.getType(), Arg.getAttributes()));
-
+  if (IsAMDGCN) {
+    VecFunc->addFnAttr(Attribute::AlwaysInline);
+    assert(VecFunc->arg_size() == 1 &&
+           "Arg size more than one are not supported.");
+    BasicBlock *BB = BasicBlock::Create(M->getContext(), "", VecFunc);
+    IRBuilder<> IRB(BB);
+    Function::arg_iterator args = VecFunc->arg_begin();
+    Value *arg_0 = &*args++;
+    Value *FirstVal =
+        IRB.CreateExtractElement(arg_0, ConstantInt::get(IRB.getInt32Ty(), 0));
+    Value *SecondVal =
+        IRB.CreateExtractElement(arg_0, ConstantInt::get(IRB.getInt32Ty(), 1));
+    unsigned ID = CI.getIntrinsicID();
+    Value *Ele1 = IRB.CreateIntrinsic(ID, CI.getType(), {FirstVal});
+    Value *Ele2 = IRB.CreateIntrinsic(ID, CI.getType(), {SecondVal});
+    VectorType *VTy = cast<VectorType>(VectorFTy->getParamType(0));
+    Value *Result = PoisonValue::get(VTy);
+    Result = IRB.CreateInsertElement(Result, Ele1,
+                                     ConstantInt::get(IRB.getInt32Ty(), 0));
+    Result = IRB.CreateInsertElement(Result, Ele2,
+                                     ConstantInt::get(IRB.getInt32Ty(), 1));
+    IRB.CreateRet(Result);
+  } else {
+    // When mapping scalar functions to vector functions, some attributes
+    // (e.g. signext) are not valid on vector types. Remove attributes that are
+    // incompatible with the vectorized return type and arguments.
+    VecFunc->removeRetAttrs(AttributeFuncs::typeIncompatible(
+        VecFunc->getReturnType(), VecFunc->getAttributes().getRetAttrs()));
+    for (auto &Arg : VecFunc->args())
+      Arg.removeAttrs(
+          AttributeFuncs::typeIncompatible(Arg.getType(), Arg.getAttributes()));
+  }
   if (auto CC = VD->getCallingConv())
     VecFunc->setCallingConv(*CC);
   ++NumVFDeclAdded;
   LLVM_DEBUG(dbgs() << DEBUG_TYPE << ": Added to the module: `" << VFName
                     << "` of type " << *VectorFTy << "\n");
-
-  // Make function declaration (without a body) "sticky" in the IR by
-  // listing it in the @llvm.compiler.used intrinsic.
-  assert(!VecFunc->size() && "VFABI attribute requires `@llvm.compiler.used` "
-                             "only on declarations.");
-  appendToCompilerUsed(*M, {VecFunc});
-  LLVM_DEBUG(dbgs() << DEBUG_TYPE << ": Adding `" << VFName
-                    << "` to `@llvm.compiler.used`.\n");
-  ++NumCompUsedAdded;
+  if (IsAMDGCN) {
+    VecFunc->setDSOLocal(true);
+  } else {
+    // Make function declaration (without a body) "sticky" in the IR by
+    // listing it in the @llvm.compiler.used intrinsic.
+    assert(!VecFunc->size() && "VFABI attribute requires `@llvm.compiler.used` "
+                               "only on declarations.");
+    appendToCompilerUsed(*M, {VecFunc});
+    LLVM_DEBUG(dbgs() << DEBUG_TYPE << ": Adding `" << VFName
+                      << "` to `@llvm.compiler.used`.\n");
+    ++NumCompUsedAdded;
+  }
 }
 
 static void addMappingsFromTLI(const TargetLibraryInfo &TLI, CallInst &CI) {
@@ -135,6 +167,8 @@ static void addMappingsFromTLI(const TargetLibraryInfo &TLI, CallInst &CI) {
 }
 
 static bool runImpl(const TargetLibraryInfo &TLI, Function &F) {
+  if (isAMDGCNVectorVariant(F.getName()))
+    return false;
   for (auto &I : instructions(F))
     if (auto CI = dyn_cast<CallInst>(&I))
       addMappingsFromTLI(TLI, *CI);
