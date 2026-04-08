@@ -42,6 +42,7 @@
 #include "GCNNSAReassign.h"
 #include "GCNPreRALongBranchReg.h"
 #include "GCNPreRAOptimizations.h"
+#include "AMDGPUInplaceMFMA.h"
 #include "GCNRewritePartialRegUses.h"
 #include "GCNSchedStrategy.h"
 #include "GCNVOPDUtils.h"
@@ -683,6 +684,7 @@ extern "C" LLVM_ABI LLVM_EXTERNAL_VISIBILITY void LLVMInitializeAMDGPUTarget() {
   initializeAMDGPUExternalAAWrapperPass(*PR);
   initializeAMDGPUImageIntrinsicOptimizerPass(*PR);
   initializeAMDGPUPrintfRuntimeBindingPass(*PR);
+  initializeAMDGPUInplaceMFMALegacyPass(*PR);
   initializeAMDGPUResourceUsageAnalysisWrapperPassPass(*PR);
   initializeGCNNSAReassignLegacyPass(*PR);
   initializeGCNPreRAOptimizationsLegacyPass(*PR);
@@ -1830,6 +1832,7 @@ bool GCNPassConfig::addRegAssignAndRewriteOptimized() {
   addPass(createVirtRegRewriter(false));
   addPass(&AMDGPUReserveWWMRegsLegacyID);
 
+  addPass(&AMDGPUInplaceMFMAID);
   // For allocating per-thread VGPRs.
   addPass(createVGPRAllocPass(true));
 
