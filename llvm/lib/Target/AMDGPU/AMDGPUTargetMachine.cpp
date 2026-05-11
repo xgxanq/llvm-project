@@ -30,6 +30,7 @@
 #include "AMDGPUNextUseAnalysis.h"
 #include "AMDGPUPerfHintAnalysis.h"
 #include "AMDGPUPreloadKernArgProlog.h"
+#include "AMDGPUConvertMFMAVGPRToAGPR.h"
 #include "AMDGPUPrepareAGPRAlloc.h"
 #include "AMDGPURemoveIncompatibleFunctions.h"
 #include "AMDGPUReserveWWMRegs.h"
@@ -701,6 +702,7 @@ extern "C" LLVM_ABI LLVM_EXTERNAL_VISIBILITY void LLVMInitializeAMDGPUTarget() {
   initializeAMDGPULowerModuleLDSLegacyPass(*PR);
   initializeAMDGPULowerBufferFatPointersPass(*PR);
   initializeAMDGPULowerIntrinsicsLegacyPass(*PR);
+  initializeAMDGPUConvertMFMAVGPRToAGPRLegacyPass(*PR);
   initializeAMDGPUReserveWWMRegsLegacyPass(*PR);
   initializeAMDGPURewriteAGPRCopyMFMALegacyPass(*PR);
   initializeAMDGPURewriteOutArgumentsPass(*PR);
@@ -1633,6 +1635,7 @@ void GCNPassConfig::addMachineSSAOptimization() {
     addPass(&MachineCSELegacyID);
     addPass(&SIFoldOperandsLegacyID);
   }
+  addPass(&AMDGPUConvertMFMAVGPRToAGPRLegacyID);
   addPass(&DeadMachineInstructionElimID);
   addPass(createSIShrinkInstructionsLegacyPass());
 }
@@ -1709,8 +1712,10 @@ void GCNPassConfig::addFastRegAlloc() {
 }
 
 void GCNPassConfig::addPreRegAlloc() {
-  if (getOptLevel() != CodeGenOptLevel::None)
+  if (getOptLevel() != CodeGenOptLevel::None) {
+    //addPass(&AMDGPUConvertMFMAVGPRToAGPRLegacyID);
     addPass(&AMDGPUPrepareAGPRAllocLegacyID);
+  }
 }
 
 void GCNPassConfig::addOptimizedRegAlloc() {
@@ -2523,8 +2528,10 @@ Error AMDGPUCodeGenPassBuilder::addOptimizedRegAlloc(
 }
 
 void AMDGPUCodeGenPassBuilder::addPreRegAlloc(PassManagerWrapper &PMW) const {
-  if (getOptLevel() != CodeGenOptLevel::None)
+  if (getOptLevel() != CodeGenOptLevel::None) {
+    //addMachineFunctionPass(AMDGPUConvertMFMAVGPRToAGPRPass(), PMW);
     addMachineFunctionPass(AMDGPUPrepareAGPRAllocPass(), PMW);
+  }
 }
 
 Error AMDGPUCodeGenPassBuilder::addRegAssignmentOptimized(

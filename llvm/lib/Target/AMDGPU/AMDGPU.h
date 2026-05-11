@@ -172,6 +172,9 @@ private:
   const AMDGPUTargetMachine &TM;
 };
 
+void initializeAMDGPUConvertMFMAVGPRToAGPRLegacyPass(PassRegistry &);
+extern char &AMDGPUConvertMFMAVGPRToAGPRLegacyID;
+
 void initializeAMDGPUPrepareAGPRAllocLegacyPass(PassRegistry &);
 extern char &AMDGPUPrepareAGPRAllocLegacyID;
 
