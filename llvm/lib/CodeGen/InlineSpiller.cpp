@@ -454,6 +454,22 @@ bool InlineSpiller::hoistSpillInsideBB(LiveInterval &SpillLI,
   if (DefMBB != CopyMI.getParent() || !SrcQ.isKill())
     return false;
 
+  // All of the sub-ranges of the hoisted value must be alive at the hoist
+  // point. The store inserted below is full-width, so if some sub-range is
+  // dead here it would store an undefined / unrelated sub-register value into
+  // the spill slot. Since the slot is shared among all descendants of the
+  // Original value, those compromised sub-lanes can clobber a sibling value
+  // living in the same slot, and the reload restores a corrupted value.
+  //
+  // This mirrors the identical sub-range liveness guard already applied to the
+  // cross-BB hoisting path in HoistSpillHelper::isSpillCandBB (see #177703);
+  // the same hazard exists on this in-BB hoisting path.
+  if (SrcLI.hasSubRanges() &&
+      !all_of(SrcLI.subranges(), [&](const LiveInterval::SubRange &SR) {
+        return SR.getVNInfoAt(Idx) != nullptr;
+      }))
+    return false;
+
   MachineBasicBlock *MBB = DefMBB;
   MachineBasicBlock::iterator MII;
   if (SrcVNI->isPHIDef())
