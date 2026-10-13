@@ -35006,10 +35006,10 @@ define inreg <44 x half> @bitcast_v44i16_to_v44f16_scalar(<44 x i16> inreg %a, i
 ; SI-NEXT:    s_branch .LBB57_3
 ; SI-NEXT:  .LBB57_2:
 ; SI-NEXT:    ; implicit-def: $sgpr4
+; SI-NEXT:    ; kill: killed $sgpr4_sgpr5
 ; SI-NEXT:    s_mov_b64 s[30:31], -1
-; SI-NEXT:    v_writelane_b32 v23, s4, 4
-; SI-NEXT:    v_writelane_b32 v23, s5, 5
 ; SI-NEXT:    ; implicit-def: $sgpr4
+; SI-NEXT:    ; kill: killed $sgpr4_sgpr5
 ; SI-NEXT:    ; implicit-def: $sgpr56
 ; SI-NEXT:    ; implicit-def: $sgpr46
 ; SI-NEXT:    ; implicit-def: $sgpr44
@@ -35028,11 +35028,8 @@ define inreg <44 x half> @bitcast_v44i16_to_v44f16_scalar(<44 x i16> inreg %a, i
 ; SI-NEXT:    ; implicit-def: $sgpr6
 ; SI-NEXT:    ; implicit-def: $sgpr92
 ; SI-NEXT:    ; implicit-def: $sgpr94
-; SI-NEXT:    v_writelane_b32 v23, s4, 6
-; SI-NEXT:    v_writelane_b32 v23, s5, 7
 ; SI-NEXT:    ; implicit-def: $sgpr4
-; SI-NEXT:    v_writelane_b32 v23, s4, 8
-; SI-NEXT:    v_writelane_b32 v23, s5, 9
+; SI-NEXT:    ; kill: killed $sgpr4_sgpr5
 ; SI-NEXT:    ; implicit-def: $sgpr4
 ; SI-NEXT:  .LBB57_3: ; %Flow
 ; SI-NEXT:    s_and_b64 s[58:59], s[30:31], exec

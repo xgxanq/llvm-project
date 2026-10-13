@@ -11008,11 +11008,10 @@ define amdgpu_kernel void @constant_sextload_v64i1_to_v64i64(ptr addrspace(1) %o
 ; GFX8-NEXT:    s_mov_b32 s29, s69
 ; GFX8-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX8-NEXT:    s_lshr_b32 s38, s3, 19
-; GFX8-NEXT:    s_lshr_b32 s4, s3, 9
 ; GFX8-NEXT:    s_lshr_b32 s40, s3, 15
 ; GFX8-NEXT:    s_lshr_b32 s44, s3, 12
 ; GFX8-NEXT:    s_lshr_b32 s54, s3, 11
-; GFX8-NEXT:    v_writelane_b32 v62, s4, 0
+; GFX8-NEXT:    s_lshr_b32 s4, s3, 9
 ; GFX8-NEXT:    s_bfe_i64 s[38:39], s[38:39], 0x10000
 ; GFX8-NEXT:    s_lshr_b32 s64, s3, 30
 ; GFX8-NEXT:    s_lshr_b32 s60, s3, 31
@@ -11032,7 +11031,7 @@ define amdgpu_kernel void @constant_sextload_v64i1_to_v64i64(ptr addrspace(1) %o
 ; GFX8-NEXT:    s_mov_b32 s35, s69
 ; GFX8-NEXT:    s_lshr_b32 s36, s3, 14
 ; GFX8-NEXT:    s_lshr_b32 s18, s3, 8
-; GFX8-NEXT:    v_writelane_b32 v62, s5, 1
+; GFX8-NEXT:    v_writelane_b32 v62, s4, 0
 ; GFX8-NEXT:    v_mov_b32_e32 v26, s38
 ; GFX8-NEXT:    v_mov_b32_e32 v27, s39
 ; GFX8-NEXT:    s_bfe_i64 s[38:39], s[54:55], 0x10000
